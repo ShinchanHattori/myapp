@@ -1,0 +1,140 @@
+name: Flutter Cross-Platform CI/CD
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  android-build:
+    name: Android Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # Setup Java for Android build
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # Setup Flutter
+      - name: Flutter action
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.x'
+          channel: 'stable'
+
+      # Get dependencies
+      - name: Get dependencies
+        run: flutter pub get
+
+      # Lint check
+      - name: Analyze project source
+        run: dart analyze
+
+      # Run tests
+      - name: Run tests
+        run: flutter test
+
+      # Build Android APK
+      - name: Build APK
+        run: flutter build apk --release
+
+      # Upload Android artifact
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  ios-build:
+    name: iOS Build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # Setup Flutter
+      - name: Flutter action
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.x'
+          channel: 'stable'
+
+      # Get dependencies
+      - name: Get dependencies
+        run: flutter pub get
+
+      # Lint check
+      - name: Analyze project source
+        run: dart analyze
+
+      # Run tests
+      - name: Run tests
+        run: flutter test
+
+      # Build iOS app
+      - name: Build iOS app
+        run: |
+          flutter build ios --release --no-codesign
+
+      # Package iOS app (if you have a valid certificate)
+      # Note: Requires additional setup for code signing
+      # - name: Package iOS app
+      #   run: |
+      #     flutter build ipa --release
+
+      # Upload iOS artifact
+      - name: Upload iOS build
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-release-app
+          path: build/ios/iphoneos/Runner.app
+
+  # Optional: Web Build
+  web-build:
+    name: Web Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # Setup Flutter
+      - name: Flutter action
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.x'
+          channel: 'stable'
+
+      # Get dependencies
+      - name: Get dependencies
+        run: flutter pub get
+
+      # Build Web app
+      - name: Build Web app
+        run: flutter build web
+
+      # Upload Web artifact
+      - name: Upload Web build
+        uses: actions/upload-artifact@v3
+        with:
+          name: web-release
+          path: build/web
+
+    # Optional: Deployment job
+    # deployment:
+    #   needs: [android-build, ios-build, web-build]
+    #   runs-on: ubuntu-latest
+    #   steps:
+    #     # Download artifacts
+    #     - name: Download Android APK
+    #       uses: actions/download-artifact@v3
+    #       with:
+    #         name: android-release-apk
+
+#     # Add deployment steps for different platforms
+#     # Google Play Store deployment
+#     # Apple App Store deployment
+#     # Web hosting deployment
