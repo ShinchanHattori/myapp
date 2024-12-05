@@ -1,0 +1,59 @@
+name: Flutter CI
+
+# Controls when the workflow will run
+on:
+  # Trigger the workflow on push or pull request events
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+      
+      # Setup Java
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      
+      # Setup Flutter
+      - name: Flutter action
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.x'
+          channel: 'stable'
+      
+      # Get flutter dependencies
+      - name: Get dependencies
+        run: flutter pub get
+      
+      # Lint check
+      - name: Analyze project
+        run: dart analyze
+      
+      # Run tests (if you have any)
+      - name: Run tests
+        run: flutter test
+      
+      # Build APK
+      - name: Build APK
+        run: flutter build apk --debug
+      
+      # Upload artifact
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
