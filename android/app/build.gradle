@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.myapp"
-    compileSdk = 33 // Replace with your desired compileSdk version
+    compileSdk = 34 // Replace with your desired compileSdk version
     ndkVersion = "25.2.9519653" // Use a valid NDK version if needed
 
     compileOptions {
