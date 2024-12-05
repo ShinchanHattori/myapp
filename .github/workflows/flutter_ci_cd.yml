@@ -1,4 +1,4 @@
-name: Flutter Cross-Platform Build
+name: Flutter CI
 
 on:
   push:
@@ -8,107 +8,68 @@ on:
   workflow_dispatch:
 
 jobs:
-  android-build:
-    name: Android Build
+  build-android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
-      # Setup Java for Android build
+
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
-      
-      # Setup Flutter
+
       - name: Flutter action
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.16.x'
           channel: 'stable'
-      
-      # Get dependencies
+
       - name: Get dependencies
         run: flutter pub get
-      
-      # Build multiple Android APKs
-      - name: Build Android APKs
-        run: |
-          # Universal APK
-          flutter build apk --release
-          
-          # Split APKs for different architectures
-          flutter build apk --release --target-platform=android-arm
-          flutter build apk --release --target-platform=android-arm64
-          flutter build apk --release --target-platform=android-x64
-      
-      # Upload Android artifacts
-      - name: Upload Android Builds
+
+      - name: Analyze project
+        run: dart analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build APK
+        run: flutter build apk --debug
+
+      - name: Upload APK
         uses: actions/upload-artifact@v3
         with:
-          name: android-releases
-          path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
-            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
-            build/app/outputs/flutter-apk/app-x86_64-release.apk
+          name: app-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
 
-  ios-build:
-    name: iOS Build
+  build-ios:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-      
-      # Setup Flutter
-      - name: Flutter action
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.16.x'
-          channel: 'stable'
-      
-      # Get dependencies
-      - name: Get dependencies
-        run: flutter pub get
-      
-      # Build iOS IPA
-      - name: Build iOS IPA
-        run: |
-          # Build unsigned IPA for development
-          flutter build ipa --release --no-codesign
-      
-      # Upload iOS artifact
-      - name: Upload iOS Build
-        uses: actions/upload-artifact@v3
-        with:
-          name: ios-release
-          path: build/ios/ipa/*.ipa
 
-  # Optional: Web Build
-  web-build:
-    name: Web Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      # Setup Flutter
       - name: Flutter action
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.16.x'
           channel: 'stable'
-      
-      # Get dependencies
+
       - name: Get dependencies
         run: flutter pub get
-      
-      # Build Web app
-      - name: Build Web app
-        run: flutter build web
-      
-      # Upload Web artifact
-      - name: Upload Web build
+
+      - name: Analyze project
+        run: dart analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build iOS
+        env:
+          FLUTTER_BUILD_DIR: build/ios/ipa
+        run: flutter build ipa --export-options-plist=ExportOptions.plist
+
+      - name: Upload IPA
         uses: actions/upload-artifact@v3
         with:
-          name: web-release
-          path: build/web
+          name: app-release
+          path: build/ios/ipa/*.ipa
