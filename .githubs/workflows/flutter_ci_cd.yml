@@ -1,165 +1,49 @@
-name: Flutter CI/CD for Testing
-
 on:
-  # Trigger on push and pull requests
-  push:
-    branches: [ main, master, develop ]
   pull_request:
-    branches: [ main, master, develop ]
-
-  # Allow manual trigger
-  workflow_dispatch:
-
-# Jobs to run
+    branches:
+      - main
+      - master
+  push:
+    branches:
+      - main
+      - master
+      - develop
+name: "Build & Release"
 jobs:
-  # Android build job
-  android-build:
-    name: Android Build
-    runs-on: ubuntu-latest
-
+  build:
+    name: Build & Release
+    runs-on: macos-latest
     steps:
-      # Checkout code
       - uses: actions/checkout@v3
-
-      # Setup Java
-      - name: Set up Java
-        uses: actions/setup-java@v3
+      - uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
-          java-version: '17'
-
-      # Setup Flutter
-      - name: Flutter Setup
-        uses: subosito/flutter-action@v2
+          java-version: '12'
+      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.x'
           channel: 'stable'
+          architecture: x64
 
-      # Get dependencies
-      - name: Get Dependencies
-        run: |
-          flutter clean
-          flutter pub get
-
-      # Run static analysis
-      - name: Static Analysis
-        run: dart analyze
-
-      # Run unit tests
-      - name: Unit Tests
-        run: flutter test
-
-      # Build Android APK
-      - name: Build Android APK
-        run: |
-          flutter build apk --debug
-          flutter build apk --release
-
-      # Upload APK artifacts
-      - name: Upload APK Artifacts
-        uses: actions/upload-artifact@v3
+      - run: flutter build apk --release --split-per-abi
+      - run: |
+          flutter build ios --no-codesign
+          cd build/ios/iphoneos
+          mkdir Payload
+          cd Payload
+          ln -s ../Runner.app
+          cd ..
+          zip -r app.ipa Payload
+      - name: Push to Releases
+        uses: ncipollo/release-action@v1
         with:
-          name: android-builds
-          path: |
-            build/app/outputs/flutter-apk/app-debug.apk
-            build/app/outputs/flutter-apk/app-release.apk
+          artifacts: "build/app/outputs/apk/release/*,build/ios/iphoneos/app.ipa"
+          tag: v1.0.${{ github.run_number }}
+          token: ${{ secrets.TOKEN }}
 
-  # iOS build job (Mac runners)
-  ios-build:
-    name: iOS Build
-    runs-on: macos-latest
 
-    steps:
-      # Checkout code
-      - uses: actions/checkout@v3
 
-      # Setup Flutter
-      - name: Flutter Setup
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.16.x'
-          channel: 'stable'
 
-      # Get dependencies
-      - name: Get Dependencies
-        run: |
-          flutter clean
-          flutter pub get
 
-      # Run static analysis
-      - name: Static Analysis
-        run: dart analyze
 
-      # Run unit tests
-      - name: Unit Tests
-        run: flutter test
-
-      # Build iOS (unsigned for testing)
-      - name: Build iOS
-        run: |
-          flutter build ios --debug --no-codesign
-          flutter build ios --release --no-codesign
-
-      # Upload iOS build artifacts
-      - name: Upload iOS Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: ios-builds
-          path: |
-            build/ios/iphoneos/Runner.app
-            build/ios/iphonesimulator/Runner.app
-
-  # Web build job (optional)
-  web-build:
-    name: Web Build
-    runs-on: ubuntu-latest
-
-    steps:
-      # Checkout code
-      - uses: actions/checkout@v3
-
-      # Setup Flutter
-      - name: Flutter Setup
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.16.x'
-          channel: 'stable'
-
-      # Get dependencies
-      - name: Get Dependencies
-        run: |
-          flutter clean
-          flutter pub get
-
-      # Build web application
-      - name: Build Web App
-        run: flutter build web
-
-      # Upload web artifacts
-      - name: Upload Web Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: web-build
-          path: build/web
-
-  # Optional: Create GitHub Release
-  release:
-    name: Create Release
-    needs: [android-build, ios-build, web-build]
-    runs-on: ubuntu-latest
-
-    steps:
-      # Download all artifacts
-      - name: Download Artifacts
-        uses: actions/download-artifact@v3
-
-      # Create GitHub Release
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        # Only create release on tags
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            android-builds/*.apk
-            ios-builds/*.app
-            web-build/*
+# push to master, main, develop
+# pull request on main master
